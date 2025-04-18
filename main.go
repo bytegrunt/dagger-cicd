@@ -1,48 +1,57 @@
-// A generated module for Rcc functions
-//
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
-//
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
-//
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
-
 package main
 
 import (
 	"context"
-	"dagger/rcc/internal/dagger"
+	"fmt"
+	"os"
+
+	"dagger.io/dagger"
 )
 
-type Rcc struct{}
-
-func (m *Rcc) BuildNodeApp(
-	ctx context.Context,
-	source *dagger.Directory,
-	docker *dagger.Socket,
-) (int, error) {
-	ctr := dag.Container().
-		From("buildpacksio/pack:latest").
-		WithUnixSocket("/var/run/docker.sock", docker).
-		WithDirectory("/app", source).
-		WithExec([]string{
-			"pack", "build", "demo-node-app",
-			"--path", "/app",
-			"--builder", "paketobuildpacks/builder-jammy-base",
-			"--buildpack", "paketo-buildpacks/nodejs",
-			"--env", "BP_DISABLE_SBOM=true",
-			"--creation-time", "now",
-			// any other --env flags here too
-		})
-
-	code, err := ctr.ExitCode(ctx)
-	if err != nil {
-		return 0, err
+func main() {
+	if err := build(context.Background()); err != nil {
+		fmt.Println(err)
 	}
-	return code, nil
+}
+
+func build(ctx context.Context) error {
+	fmt.Println("Building with Dagger")
+
+	// initialize Dagger client
+	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stderr))
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// get reference to the local project
+	src := client.Host().Directory(".")
+
+	packcli := client.Container().From("buildpacksio/pack:latest").WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock"))
+
+	// mount cloned repository into `golang` image
+	packcli = packcli.WithDirectory("./node-app", src).WithWorkdir("./node-app")
+
+	// define the application build command
+	packcli = packcli.WithExec([]string{
+		"pack", "build", "demo-node-app",
+		"--path", "node-app",
+		"--builder", "heroku/builder:24",
+		// "--buildpack", "paketo-buildpacks/nodejs",
+		"--env", "BP_DISABLE_SBOM=true",
+		"--platform", "linux/arm64",
+		// "--creation-time", "now",
+		// any other --env flags here too
+	})
+
+	// get reference to build output directory in container
+	output := packcli.Directory("./workspace")
+
+	// write contents of container build/ directory to the host
+	_, err = output.Export(ctx, "./workspace")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
