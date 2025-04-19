@@ -31,10 +31,9 @@ func build(ctx context.Context) error {
 	src := client.Host().Directory("./node-app")
 	packcli := client.Container().From("paketobuildpacks/builder-jammy-base:latest").WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
 
-	
-	packcli = packcli.WithDirectory("./src", src) //.WithWorkdir("./node-app")
-	
-	packcli = packcli.WithExec([]string{"sh","-c","mkdir /tmp/src1; cd /tmp/src; tar -c … | tar -x -C /tmp/src1"})
+	packcli = packcli.WithMountedDirectory("/tmp/src", src).WithWorkdir("./tmp/src1")
+
+	packcli = packcli.WithExec([]string{"sh", "-c", "mkdir /tmp/src1; cd /tmp/src; tar -c … | tar -x -C /tmp/src1"})
 
 	packcli = packcli.WithExec([]string{"echo", "before pack"})
 
