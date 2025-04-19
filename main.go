@@ -29,13 +29,20 @@ func build(ctx context.Context) error {
 	defer cancel()
 	// get reference to the local project
 	src := client.Host().Directory("./node-app")
-	packcli := client.Container().From("paketobuildpacks/builder-jammy-base:latest").WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
+	packcli := client.Container().From("paketobuildpacks/builder-jammy-full:latest") //.WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
 
-	packcli = packcli.WithMountedDirectory("/tmp/src", src).WithWorkdir("./tmp/src1")
+	packcli = packcli.WithMountedDirectory("/tmp/src", src)
 
-	packcli = packcli.WithExec([]string{"sh", "-c", "mkdir /tmp/src1; cd /tmp/src; tar -c --exclude .git . | tar -x -C /tmp/src1"})
+	// packcli = packcli.WithExec([]string{"sh", "-c", "mkdir /tmp/src1; cp /tmp/src/* /tmp/src1/"})
 
-	packcli = packcli.WithExec([]string{"echo", "before pack"})
+	packcli = packcli.WithExec([]string{"mkdir", "/tmp/src1"})
+	packcli = packcli.WithExec([]string{"cp", "-r", "/tmp/src/.", "/tmp/src1/"})
+	packcli = packcli.WithWorkdir("/tmp/src1")
+
+	packcli = packcli.WithExec([]string{"ls", "-al"})
+	packcli = packcli.WithExec([]string{"pwd"})
+
+	// packcli = packcli.WithExec([]string{"ls", "-al", "/tmp/src"})
 
 	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.14 /cnb/lifecycle/creator -app=. %s", "ttl.sh/demo-node-app:30m")})
 
