@@ -29,13 +29,13 @@ func build(ctx context.Context) error {
 	defer cancel()
 	// get reference to the local project
 	src := client.Host().Directory(".")
-	packcli := client.Container().From("paketobuildpacks/builder:base").WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
+	packcli := client.Container().From("paketobuildpacks/builder-jammy-base:latest").WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
 
 	packcli = packcli.WithDirectory("./node-app", src).WithWorkdir("./node-app")
 
 	packcli = packcli.WithExec([]string{"echo", "before pack"})
 
-	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.8 /cnb/lifecycle/creator -app=. %s", "ttl.sh/demo-node-app:30m")})
+	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.14 /cnb/lifecycle/creator -app=. %s", "ttl.sh/demo-node-app:30m")})
 
 	// define the application build command
 	// packcli = packcli.WithExec([]string{
