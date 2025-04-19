@@ -27,42 +27,24 @@ func build(ctx context.Context) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	// get reference to the local project
+	// get reference to the local source code directory
 	src := client.Host().Directory("./node-app")
-	packcli := client.Container().From("paketobuildpacks/builder-jammy-full:latest") //.WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
 
+	// setup the build container
+	packcli := client.Container().From("paketobuildpacks/builder-jammy-full:latest")
+
+	// Mount the local source code directory into the container
 	packcli = packcli.WithMountedDirectory("/tmp/src", src)
 
-	// packcli = packcli.WithExec([]string{"sh", "-c", "mkdir /tmp/src1; cp /tmp/src/* /tmp/src1/"})
-
+	// Make a temporary directory in the container to copy the source code into because of permissions
 	packcli = packcli.WithExec([]string{"mkdir", "/tmp/src1"})
 	packcli = packcli.WithExec([]string{"cp", "-r", "/tmp/src/.", "/tmp/src1/"})
+
+	//set the working directory to the temporary directory
 	packcli = packcli.WithWorkdir("/tmp/src1")
 
-	packcli = packcli.WithExec([]string{"ls", "-al"})
-	packcli = packcli.WithExec([]string{"pwd"})
-
-	// packcli = packcli.WithExec([]string{"ls", "-al", "/tmp/src"})
-
-	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.14 /cnb/lifecycle/creator -app=. %s", "ttl.sh/demo-node-app:30m")})
-
-	// define the application build command
-	// packcli = packcli.WithExec([]string{
-	// 	"pack", "build", "ttl.sh/demo-node-app:2h",
-	// 	"--path", "node-app",
-	// 	"--builder", "heroku/builder:24",
-	// 	// "--buildpack", "paketo-buildpacks/nodejs",
-	// 	// "--cache", "type=build;format=bind;source=/tmp/build-cache;type=launch;format=bind;source=/tmp/build-cache",
-	// 	"--env", "BP_DISABLE_SBOM=true",
-	// 	// "--volume", "/tmp/:/tmp/build-cache/",
-	// 	// "--clear-cache",
-	// 	// "--platform", "linux/arm64",
-	// 	"--verbose",
-	// 	"--publish",
-	// 	// "--creation-time", "now",
-	// 	// any other --env flags here too
-	// })
-	packcli = packcli.WithExec([]string{"echo", "after pack"})
+	// Build the application using cnb lifecycle/creator https://github.com/buildpacks/spec/blob/platform/v0.14/platform.md#creator
+	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.14 /cnb/lifecycle/creator -app=. -buildpack=%s %s", "paketo-buildpacks/nodejs", "ttl.sh/demo-node-app:30m")})
 
 	out, err := packcli.Stdout(ctx)
 	if err != nil {
@@ -70,15 +52,6 @@ func build(ctx context.Context) error {
 	}
 
 	fmt.Println(out)
-
-	// get reference to build output directory in container
-	// output := packcli.Directory("./workspace")
-
-	// // write contents of container build/ directory to the host
-	// _, err = output.Export(ctx, "./workspace")
-	// if err != nil {
-	// 	return err
-	// }
 
 	return nil
 }
