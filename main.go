@@ -28,10 +28,13 @@ func build(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	// get reference to the local project
-	src := client.Host().Directory(".")
+	src := client.Host().Directory("./node-app")
 	packcli := client.Container().From("paketobuildpacks/builder-jammy-base:latest").WithUnixSocket("/var/run/docker.sock", client.Host().UnixSocket("unix:///var/run/docker.sock")) // Alpine-based, has Docker CLI
 
-	packcli = packcli.WithDirectory("./node-app", src).WithWorkdir("./node-app")
+	
+	packcli = packcli.WithDirectory("./src", src) //.WithWorkdir("./node-app")
+	
+	packcli = packcli.WithExec([]string{"sh","-c","mkdir /tmp/src1; cd /tmp/src; tar -c … | tar -x -C /tmp/src1"})
 
 	packcli = packcli.WithExec([]string{"echo", "before pack"})
 
