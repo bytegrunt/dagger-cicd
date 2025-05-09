@@ -43,15 +43,37 @@ func build(ctx context.Context) error {
 	//set the working directory to the temporary directory
 	packcli = packcli.WithWorkdir("/tmp/src1")
 
-	// Build the application using cnb lifecycle/creator https://github.com/buildpacks/spec/blob/platform/v0.14/platform.md#creator
-	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.14 /cnb/lifecycle/creator -app=. -buildpack=%s %s", "paketo-buildpacks/nodejs", "ttl.sh/demo-node-app:30m")})
+	packcli = packcli.WithExec([]string{"ls", "-al"})
+	packcli = packcli.WithExec([]string{"pwd"})
 
-	out, err := packcli.Stdout(ctx)
+	// packcli = packcli.WithExec([]string{"ls", "-al", "/tmp/src"})
+
+	packcli = packcli.WithExec([]string{"bash", "-c", fmt.Sprintf("CNB_PLATFORM_API=0.14 /cnb/lifecycle/creator -app=. %s", "demo-node-app:10m")})
+
+	// define the application build command
+	// packcli = packcli.WithExec([]string{
+	// 	"pack", "build", "ttl.sh/demo-node-app:2h",
+	// 	"--path", "node-app",
+	// 	"--builder", "heroku/builder:24",
+	// 	// "--buildpack", "paketo-buildpacks/nodejs",
+	// 	// "--cache", "type=build;format=bind;source=/tmp/build-cache;type=launch;format=bind;source=/tmp/build-cache",
+	// 	"--env", "BP_DISABLE_SBOM=true",
+	// 	// "--volume", "/tmp/:/tmp/build-cache/",
+	// 	// "--clear-cache",
+	// 	// "--platform", "linux/arm64",
+	// 	"--verbose",
+	// 	"--publish",
+	// 	// "--creation-time", "now",
+	// 	// any other --env flags here too
+	// })
+	packcli = packcli.WithExec([]string{"echo", "after pack"})
+
+	_, err = packcli.Stdout(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(out)
+	// fmt.Println(out)
 
 	return nil
 }
